@@ -1,7 +1,7 @@
 package ru.hh.jersey.test;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.core.util.MultivaluedMapImpl;
+import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
 import com.sun.jersey.spi.resource.Singleton;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -23,59 +23,60 @@ import org.apache.commons.lang.math.NumberUtils;
 @Path("/")
 @Singleton
 public class RootResource {
-  private Map<String, PathContext> pathContextMap = new HashMap<String, PathContext>();
+  private Map<RequestMapping, ExpectedResponse> pathContextMap = new HashMap<RequestMapping, ExpectedResponse>();
 
-  private void setHeaders(String path, MultivaluedMap<String, String> responseHeaders) {
-    PathContext pathContext = getPathContext(path);
-    pathContext.setResponseHeaders(responseHeaders);
+  private void setHeaders(RequestMapping requestMapping, MultivaluedMap<String, String> responseHeaders) {
+    ExpectedResponse expectedResponse = getPathContext(requestMapping);
+    expectedResponse.setResponseHeaders(responseHeaders);
   }
 
-  private void setEntity(String path, String entity) {
-    PathContext pathContext = getPathContext(path);
-    pathContext.setEntity(entity);
+  private void setEntity(RequestMapping requestMapping, String entity) {
+    ExpectedResponse expectedResponse = getPathContext(requestMapping);
+    expectedResponse.setEntity(entity);
   }
 
-  private void setResponseStatus(String path, ClientResponse.Status status) {
-    PathContext pathContext = getPathContext(path);
-    pathContext.setStatus(status);
+  private void setResponseStatus(RequestMapping requestMapping, ClientResponse.Status status) {
+    ExpectedResponse expectedResponse = getPathContext(requestMapping);
+    expectedResponse.setStatus(status);
   }
 
-  private PathContext getPathContext(String path) {
-    PathContext pathContext;
-    pathContext = pathContextMap.get(path);
+  private ExpectedResponse getPathContext(RequestMapping requestMapping) {
+    ExpectedResponse expectedResponse;
+    expectedResponse = pathContextMap.get(requestMapping);
 
-    if (pathContext == null) {
-      pathContext = new PathContext();
-      pathContextMap.put(path, pathContext);
+    if (expectedResponse == null) {
+      expectedResponse = new ExpectedResponse();
+      pathContextMap.put(requestMapping, expectedResponse);
     }
 
-    return pathContext;
+    return expectedResponse;
   }
 
   @GET
   @Path("{path:.+}")
   @Produces({ "application/xml" })
-  public Response content(@PathParam("path") String path) {
-    return getResponseBuilder("/" + path).build();
+  public Response content(@PathParam("path") String path, @Context
+      UriInfo uriInfo) {
+    return getResponseBuilder("/" + path, uriInfo.getQueryParameters()).build();
   }
 
   @POST
   @Path("{path:.+}")
   @Produces({ "application/xml" })
   public Response contentPost(@PathParam("path") String path) {
-    return getResponseBuilder("/" + path).build();
+    return getResponseBuilder("/" + path, null).build();
   }
 
-  private Response.ResponseBuilder getResponseBuilder(String path) {
-    PathContext pathContext = pathContextMap.get(path);
-    if (pathContext == null) {
+  private Response.ResponseBuilder getResponseBuilder(String path, MultivaluedMap<String, String> queryParameters) {
+    ExpectedResponse expectedResponse = pathContextMap.get(new RequestMapping(path, queryParameters));
+    if (expectedResponse == null) {
       return Response.status(Response.Status.NOT_FOUND);
     }
 
-    ClientResponse.Status actualStatus = pathContext.getStatus();
+    ClientResponse.Status actualStatus = expectedResponse.getStatus();
     Response.ResponseBuilder responseBuilder = Response.status(actualStatus);
 
-    MultivaluedMap<String, String> responseHeaders = pathContext.getResponseHeaders();
+    MultivaluedMap<String, String> responseHeaders = expectedResponse.getResponseHeaders();
     if (responseHeaders != null) {
       for (Map.Entry<String, List<String>> entry : responseHeaders.entrySet()) {
         for (String headerValue : entry.getValue()) {
@@ -84,7 +85,7 @@ public class RootResource {
       }
     }
 
-    responseBuilder.entity(pathContext.getEntity());
+    responseBuilder.entity(expectedResponse.getEntity());
 
     return responseBuilder;
   }
@@ -96,33 +97,49 @@ public class RootResource {
       UriInfo ui) throws UnsupportedEncodingException {
     MultivaluedMap<String, String> queryParameters = ui.getQueryParameters();
 
+    RequestMapping requestMapping = generateRequestMapping(queryParameters);
+
+    List<String> headers = queryParameters.get("header");
+    if (headers != null && !headers.isEmpty()) {
+      setHeaders(requestMapping, parseMultivaluedMapFromQueryParameter(headers));
+    }
+
+    String status = queryParameters.getFirst("status");
+    if (StringUtils.isNotBlank(status) && StringUtils.isNumeric(status)) {
+      setResponseStatus(requestMapping, ClientResponse.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
+    }
+
+    String entity = queryParameters.getFirst("entity");
+    if (StringUtils.isNotBlank(entity)) {
+      setEntity(requestMapping, URLDecoder.decode(entity, "UTF-8"));
+    }
+
+    return Response.status(Response.Status.OK).entity("ok").build();
+  }
+
+  private RequestMapping generateRequestMapping(MultivaluedMap<String, String> queryParameters) {
     String path = queryParameters.getFirst("path");
     if (StringUtils.isBlank(path)) {
       path = "/";
     }
 
-    List<String> headers = queryParameters.get("header");
-    if (headers != null) {
-      MultivaluedMap<String, String> responseHeaders = new MultivaluedMapImpl();
-      for (String header : headers) {
-        String[] headerParts = header.split(":");
-        String headerName = headerParts[0];
-        String headerValue = headerParts[1];
-        responseHeaders.add(headerName, headerValue);
-      }
-      setHeaders(path, responseHeaders);
+    MultivaluedMap<String, String> requestParams = null;
+    List<String> params = queryParameters.get("queryParams");
+    if (params != null && !params.isEmpty()) {
+      requestParams = parseMultivaluedMapFromQueryParameter(params);
     }
 
-    String status = queryParameters.getFirst("status");
-    if (StringUtils.isNotBlank(status) && StringUtils.isNumeric(status)) {
-      setResponseStatus(path, ClientResponse.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
-    }
+    return new RequestMapping(path, requestParams);
+  }
 
-    String entity = queryParameters.getFirst("entity");
-    if (StringUtils.isNotBlank(entity)) {
-      setEntity(path, URLDecoder.decode(entity, "UTF-8"));
+  private MultivaluedMap<String, String> parseMultivaluedMapFromQueryParameter(List<String> queryParameterValues) {
+    MultivaluedMap<String, String> result = new StringKeyIgnoreCaseMultivaluedMap<String>();
+    for (String queryParameterValue : queryParameterValues) {
+      String[] queryParameterValueParts = queryParameterValue.split(":");
+      String mapKey = queryParameterValueParts[0];
+      String mapValue = queryParameterValueParts[1];
+      result.add(mapKey, mapValue);
     }
-
-    return Response.status(Response.Status.OK).entity("ok").build();
+    return result;
   }
 }

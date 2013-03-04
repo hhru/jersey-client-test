@@ -47,11 +47,20 @@ public abstract class JerseyClientTest extends JerseyTest {
     setServerAnswer(path, content, 200);
   }
 
-  protected void setServerAnswer(String path, String content, Integer status) {
-    setServerAnswer(path, content, status, null);
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content) {
+    setServerAnswer(path, queryParams, content, 200);
   }
 
-  protected void setServerAnswer(String path, String content, Integer status, MultivaluedMap<String, String> headers) {
+  protected void setServerAnswer(String path, String content, Integer status) {
+    setServerAnswer(path, null, content, status, null);
+  }
+
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer status) {
+    setServerAnswer(path, queryParams, content, status, null);
+  }
+
+  protected void setServerAnswer(
+      String path, MultivaluedMap<String, String> queryParams, String content, Integer status, MultivaluedMap<String, String> headers) {
     URI baseURI = getBaseURI();
 
     WebResource resource = client().resource(baseURI).path("/setParams");
@@ -63,14 +72,23 @@ public abstract class JerseyClientTest extends JerseyTest {
       throw new RuntimeException(e);
     }
 
-    if (headers != null) {
-      for (Map.Entry<String, List<String>> header : headers.entrySet()) {
-        for (String headerValue : header.getValue()) {
-          resource = resource.queryParam("header", header.getKey() + ":" + headerValue);
-        }
-      }
+    if (headers != null && !headers.isEmpty()) {
+      resource = addMultivaluedMapsToRequest(headers, "header", resource);
+    }
+
+    if (queryParams != null && !queryParams.isEmpty()) {
+      resource = addMultivaluedMapsToRequest(queryParams, "queryParams", resource);
     }
 
     resource.type("application/x-www-form-urlencoded").accept(MediaType.TEXT_PLAIN_TYPE).post(String.class);
+  }
+
+  private WebResource addMultivaluedMapsToRequest(MultivaluedMap<String, String> mapWithValues, String multivaluedName, WebResource resource) {
+    for (Map.Entry<String, List<String>> header : mapWithValues.entrySet()) {
+      for (String headerValue : header.getValue()) {
+        resource = resource.queryParam(multivaluedName, header.getKey() + ":" + headerValue);
+      }
+    }
+    return resource;
   }
 }

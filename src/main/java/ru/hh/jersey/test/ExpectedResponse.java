@@ -3,14 +3,15 @@ package ru.hh.jersey.test;
 import com.sun.jersey.api.client.ClientResponse;
 import javax.ws.rs.core.MultivaluedMap;
 
-class PathContext {
+class ExpectedResponse {
   private MultivaluedMap<String, String> responseHeaders;
   private String entity;
   private ClientResponse.Status status = ClientResponse.Status.OK;
+  private MultivaluedMap<String, String> queryParams;
 
-  PathContext() { }
+  ExpectedResponse() { }
 
-  PathContext(MultivaluedMap<String, String> responseHeaders, String entity, ClientResponse.Status status) {
+  ExpectedResponse(MultivaluedMap<String, String> responseHeaders, String entity, ClientResponse.Status status) {
     this.responseHeaders = responseHeaders;
     this.entity = entity;
     this.status = status;
@@ -38,5 +39,13 @@ class PathContext {
 
   public void setStatus(ClientResponse.Status status) {
     this.status = status;
+  }
+
+  public MultivaluedMap<String, String> getQueryParams() {
+    return queryParams;
+  }
+
+  public void setRequestParams(MultivaluedMap<String, String> queryParams) {
+    this.queryParams = queryParams;
   }
 }
