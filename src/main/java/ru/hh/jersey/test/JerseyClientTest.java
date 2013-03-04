@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
+
+import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 
@@ -51,16 +53,23 @@ public abstract class JerseyClientTest extends JerseyTest {
     setServerAnswer(path, queryParams, content, 200);
   }
 
+  protected void setServerAnswer(String path, String content, String mediaType) {
+    setServerAnswer(path, null, content, 200, null, mediaType);
+  }
+
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, String mediaType) {
+    setServerAnswer(path, queryParams, content, 200, null, mediaType);
+  }
+
   protected void setServerAnswer(String path, String content, Integer status) {
-    setServerAnswer(path, null, content, status, null);
+    setServerAnswer(path, null, content, status, null, "text/plain");
   }
 
   protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer status) {
-    setServerAnswer(path, queryParams, content, status, null);
+    setServerAnswer(path, queryParams, content, status, null, "text/plain");
   }
 
-  protected void setServerAnswer(
-      String path, MultivaluedMap<String, String> queryParams, String content, Integer status, MultivaluedMap<String, String> headers) {
+  protected void setServerAnswer( String path, MultivaluedMap<String, String> queryParams, String content, Integer status, MultivaluedMap<String, String> headers, String responseMediaType) {
     URI baseURI = getBaseURI();
 
     WebResource resource = client().resource(baseURI).path("/setParams");
@@ -78,6 +87,10 @@ public abstract class JerseyClientTest extends JerseyTest {
 
     if (queryParams != null && !queryParams.isEmpty()) {
       resource = addMultivaluedMapsToRequest(queryParams, "queryParams", resource);
+    }
+
+    if(StringUtils.isNotBlank(responseMediaType)){
+      resource = resource.queryParam("mediaType", responseMediaType);
     }
 
     resource.type("application/x-www-form-urlencoded").accept(MediaType.TEXT_PLAIN_TYPE).post(String.class);

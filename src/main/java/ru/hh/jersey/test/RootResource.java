@@ -3,6 +3,7 @@ package ru.hh.jersey.test;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
 import com.sun.jersey.spi.resource.Singleton;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 
@@ -40,6 +42,11 @@ public class RootResource {
     expectedResponse.setStatus(status);
   }
 
+  private void setResponseMediaType(RequestMapping requestMapping, String responseMediaType) {
+    ExpectedResponse expectedResponse = getPathContext(requestMapping);
+    expectedResponse.setMediaType(responseMediaType);
+  }
+
   private ExpectedResponse getPathContext(RequestMapping requestMapping) {
     ExpectedResponse expectedResponse;
     expectedResponse = pathContextMap.get(requestMapping);
@@ -54,15 +61,12 @@ public class RootResource {
 
   @GET
   @Path("{path:.+}")
-  @Produces({ "application/xml" })
-  public Response content(@PathParam("path") String path, @Context
-      UriInfo uriInfo) {
+  public Response content(@PathParam("path") String path, @Context UriInfo uriInfo) {
     return getResponseBuilder("/" + path, uriInfo.getQueryParameters()).build();
   }
 
   @POST
   @Path("{path:.+}")
-  @Produces({ "application/xml" })
   public Response contentPost(@PathParam("path") String path) {
     return getResponseBuilder("/" + path, null).build();
   }
@@ -86,6 +90,7 @@ public class RootResource {
     }
 
     responseBuilder.entity(expectedResponse.getEntity());
+    responseBuilder.type(expectedResponse.getMediaType());
 
     return responseBuilder;
   }
@@ -94,7 +99,7 @@ public class RootResource {
   @Path("/setParams")
   @Produces({ "text/plain" })
   public Response setParameters(@Context
-      UriInfo ui) throws UnsupportedEncodingException {
+                                UriInfo ui) throws UnsupportedEncodingException {
     MultivaluedMap<String, String> queryParameters = ui.getQueryParameters();
 
     RequestMapping requestMapping = generateRequestMapping(queryParameters);
@@ -112,6 +117,11 @@ public class RootResource {
     String entity = queryParameters.getFirst("entity");
     if (StringUtils.isNotBlank(entity)) {
       setEntity(requestMapping, URLDecoder.decode(entity, "UTF-8"));
+    }
+
+    String responseMediaType = queryParameters.getFirst("mediaType");
+    if (StringUtils.isNotBlank(responseMediaType)) {
+      setResponseMediaType(requestMapping, responseMediaType.trim());
     }
 
     return Response.status(Response.Status.OK).entity("ok").build();

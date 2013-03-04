@@ -8,6 +8,7 @@ class ExpectedResponse {
   private String entity;
   private ClientResponse.Status status = ClientResponse.Status.OK;
   private MultivaluedMap<String, String> queryParams;
+  private String mediaType = "text/plain";
 
   ExpectedResponse() { }
 
@@ -15,6 +16,7 @@ class ExpectedResponse {
     this.responseHeaders = responseHeaders;
     this.entity = entity;
     this.status = status;
+    this.mediaType = mediaType;
   }
 
   public MultivaluedMap<String, String> getResponseHeaders() {
@@ -47,5 +49,13 @@ class ExpectedResponse {
 
   public void setRequestParams(MultivaluedMap<String, String> queryParams) {
     this.queryParams = queryParams;
+  }
+
+  public String getMediaType() {
+    return mediaType;
+  }
+
+  public void setMediaType(String mediaType) {
+    this.mediaType = mediaType;
   }
 }
