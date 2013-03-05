@@ -8,7 +8,7 @@ class ExpectedResponse {
   private String entity;
   private ClientResponse.Status status = ClientResponse.Status.OK;
   private MultivaluedMap<String, String> queryParams;
-  private String mediaType = "text/plain";
+  private String mediaType = "application/xml";
 
   ExpectedResponse() { }
 

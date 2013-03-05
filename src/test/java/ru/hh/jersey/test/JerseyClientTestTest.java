@@ -1,32 +1,26 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.filter.LoggingFilter;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
 import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.net.URI;
 import java.util.Arrays;
-
 import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
 import org.junit.Test;
-
-import javax.ws.rs.core.MultivaluedMap;
 
 public class JerseyClientTestTest extends JerseyClientTest {
   @Test
   public void testReturnContent() throws Exception {
     String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
       + "<entity val=\"1\"/>";
-    setServerAnswer("/test", expectAnswer);
+    setServerAnswer("/test", expectAnswer, "text/plain");
     WebResource resource = getWebResource(getBaseURI());
 
     String actualAnswer = resource.path("/test").get(String.class);
@@ -38,7 +32,7 @@ public class JerseyClientTestTest extends JerseyClientTest {
   public void testReturnMediaType() throws Exception {
     String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
       + "<entity val=\"1\"/>";
-    setServerAnswer("/test", expectAnswer, "application/xml");
+    setServerAnswer("/test", expectAnswer);
     WebResource resource = getWebResource(getBaseURI());
 
     Entity actualAnswer = resource.path("/test").get(Entity.class);
@@ -53,7 +47,7 @@ public class JerseyClientTestTest extends JerseyClientTest {
     StringKeyIgnoreCaseMultivaluedMap<String> queryParams = new StringKeyIgnoreCaseMultivaluedMap<String>();
     queryParams.putSingle("testParam", "testValue");
 
-    setServerAnswer("/test", queryParams, expectAnswer, "application/xml");
+    setServerAnswer("/test", queryParams, expectAnswer);
 
     WebResource resource = getWebResource(getBaseURI());
 
@@ -69,7 +63,7 @@ public class JerseyClientTestTest extends JerseyClientTest {
     StringKeyIgnoreCaseMultivaluedMap<String> queryParams = new StringKeyIgnoreCaseMultivaluedMap<String>();
     queryParams.putSingle("testParam", "testValue");
 
-    setServerAnswer("/test", queryParams, expectAnswer);
+    setServerAnswer("/test", queryParams, expectAnswer, "text/plain");
 
     WebResource resource = getWebResource(getBaseURI());
 
@@ -86,7 +80,7 @@ public class JerseyClientTestTest extends JerseyClientTest {
 
   @Test(expected = UniformInterfaceException.class)
   public void testReturnStatus() throws Exception {
-    setServerAnswer("/test", "", 301);
+    setServerAnswer("/test", null, "", 301, "text/plain");
     WebResource resource = getWebResource(getBaseURI());
 
     try {

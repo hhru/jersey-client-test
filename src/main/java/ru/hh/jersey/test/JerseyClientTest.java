@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
-
 import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -61,15 +60,21 @@ public abstract class JerseyClientTest extends JerseyTest {
     setServerAnswer(path, queryParams, content, 200, null, mediaType);
   }
 
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer status, String mediaType) {
+    setServerAnswer(path, queryParams, content, status, null, mediaType);
+  }
+
   protected void setServerAnswer(String path, String content, Integer status) {
-    setServerAnswer(path, null, content, status, null, "text/plain");
+    setServerAnswer(path, null, content, status, null, "application/xml");
   }
 
   protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer status) {
-    setServerAnswer(path, queryParams, content, status, null, "text/plain");
+    setServerAnswer(path, queryParams, content, status, null, "application/xml");
   }
 
-  protected void setServerAnswer( String path, MultivaluedMap<String, String> queryParams, String content, Integer status, MultivaluedMap<String, String> headers, String responseMediaType) {
+  protected void setServerAnswer(
+      String path, MultivaluedMap<String, String> queryParams, String content, Integer status, MultivaluedMap<String, String> headers,
+      String responseMediaType) {
     URI baseURI = getBaseURI();
 
     WebResource resource = client().resource(baseURI).path("/setParams");
@@ -89,7 +94,7 @@ public abstract class JerseyClientTest extends JerseyTest {
       resource = addMultivaluedMapsToRequest(queryParams, "queryParams", resource);
     }
 
-    if(StringUtils.isNotBlank(responseMediaType)){
+    if (StringUtils.isNotBlank(responseMediaType)) {
       resource = resource.queryParam("mediaType", responseMediaType);
     }
 
