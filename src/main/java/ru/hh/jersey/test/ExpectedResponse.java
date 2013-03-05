@@ -7,7 +7,6 @@ class ExpectedResponse {
   private MultivaluedMap<String, String> responseHeaders;
   private String entity;
   private ClientResponse.Status status = ClientResponse.Status.OK;
-  private MultivaluedMap<String, String> queryParams;
   private String mediaType = "application/xml";
 
   ExpectedResponse() { }
@@ -41,14 +40,6 @@ class ExpectedResponse {
 
   public void setStatus(ClientResponse.Status status) {
     this.status = status;
-  }
-
-  public MultivaluedMap<String, String> getQueryParams() {
-    return queryParams;
-  }
-
-  public void setRequestParams(MultivaluedMap<String, String> queryParams) {
-    this.queryParams = queryParams;
   }
 
   public String getMediaType() {
