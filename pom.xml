@@ -8,7 +8,7 @@
   </parent>
   <groupId>ru.hh.jersey</groupId>
   <artifactId>jersey-client-test</artifactId>
-  <version>1.4-SNAPSHOT</version>
+  <version>1.4</version>
 
   <properties>
     <jersey.version>1.13</jersey.version>
