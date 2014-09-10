@@ -1,5 +1,6 @@
 package ru.hh.jersey.test;
 
+import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.core.ClassNamesResourceConfig;
 import com.sun.jersey.spi.container.servlet.WebComponent;
@@ -44,67 +45,111 @@ public abstract class JerseyClientTest extends JerseyTest {
     .build();
   }
 
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
   protected void setServerAnswer(String path, String content) {
     setServerAnswer(path, content, 200);
   }
 
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
   protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content) {
     setServerAnswer(path, queryParams, content, 200);
   }
 
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
   protected void setServerAnswer(String path, String content, String mediaType) {
     setServerAnswer(path, null, content, 200, null, mediaType);
   }
 
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
   protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, String mediaType) {
     setServerAnswer(path, queryParams, content, 200, null, mediaType);
   }
 
-  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer status, String mediaType) {
-    setServerAnswer(path, queryParams, content, status, null, mediaType);
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer statusCode, String mediaType) {
+    setServerAnswer(path, queryParams, content, statusCode, null, mediaType);
   }
 
-  protected void setServerAnswer(String path, String content, Integer status) {
-    setServerAnswer(path, null, content, status, null, "application/xml");
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
+  protected void setServerAnswer(String path, String content, Integer statusCode) {
+    setServerAnswer(path, null, content, statusCode, null, "application/xml");
   }
 
-  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer status) {
-    setServerAnswer(path, queryParams, content, status, null, "application/xml");
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer statusCode) {
+    setServerAnswer(path, queryParams, content, statusCode, null, "application/xml");
   }
 
+  /**
+   * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
+   */
+  @Deprecated
   protected void setServerAnswer(
-      String path, MultivaluedMap<String, String> queryParams, String content, Integer status, MultivaluedMap<String, String> headers,
-      String responseMediaType) {
+      String path, MultivaluedMap<String, String> queryParams, String content, Integer statusCode, MultivaluedMap<String, String> headers,
+      String mediaType) {
+      setServerAnswer(RequestMapping.builder(HttpMethod.GET, path).addQueryParams(queryParams).build(),
+                      ExpectedResponse.builder()
+                        .entity(content).status(ClientResponse.Status.fromStatusCode(statusCode)).addHeaders(headers).mediaType(mediaType).build());
+  }
+
+  protected void setServerAnswer(RequestMapping requestMapping, ExpectedResponse expectedResponse) {
     URI baseURI = getBaseURI();
 
     WebResource resource = client().resource(baseURI).path("/setParams");
 
     try {
-      resource = resource.queryParam("status", status.toString()).queryParam("path", URLEncoder.encode(path, "UTF-8"))
-        .queryParam("entity", URLEncoder.encode(content, "UTF-8"));
+      resource = resource.queryParam("response.status", String.valueOf(expectedResponse.getStatus().getStatusCode()))
+        .queryParam("request.path", URLEncoder.encode(requestMapping.getPath(), "UTF-8"));
+
+      if (StringUtils.isNotBlank(expectedResponse.getEntity())){
+        resource = resource.queryParam("response.entity", URLEncoder.encode(expectedResponse.getEntity(), "UTF-8"));
+      }
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException(e);
     }
 
-    if (headers != null && !headers.isEmpty()) {
-      resource = addMultivaluedMapsToRequest(headers, "header", resource);
+    if (expectedResponse.getHeaders() != null && !expectedResponse.getHeaders().isEmpty()) {
+      resource = addMultivaluedMapsToRequest(expectedResponse.getHeaders(), "response.headers", resource);
     }
 
-    if (queryParams != null && !queryParams.isEmpty()) {
-      resource = addMultivaluedMapsToRequest(queryParams, "queryParams", resource);
+    if (requestMapping.getParams() != null && !requestMapping.getParams().isEmpty()) {
+      resource = addMultivaluedMapsToRequest(requestMapping.getParams(), "request.queryParams", resource);
     }
 
-    if (StringUtils.isNotBlank(responseMediaType)) {
-      resource = resource.queryParam("mediaType", responseMediaType);
+    if (StringUtils.isNotBlank(expectedResponse.getMediaType())) {
+      resource = resource.queryParam("response.mediaType", expectedResponse.getMediaType());
     }
+
+    resource = resource.queryParam("request.httpMethod", requestMapping.getHttpMethod().name());
 
     resource.type("application/x-www-form-urlencoded").accept(MediaType.TEXT_PLAIN_TYPE).post(String.class);
   }
 
   private WebResource addMultivaluedMapsToRequest(MultivaluedMap<String, String> mapWithValues, String multivaluedName, WebResource resource) {
-    for (Map.Entry<String, List<String>> header : mapWithValues.entrySet()) {
-      for (String headerValue : header.getValue()) {
-        resource = resource.queryParam(multivaluedName, header.getKey() + ":" + headerValue);
+    for (Map.Entry<String, List<String>> multivaluedEntities : mapWithValues.entrySet()) {
+      for (String multivaluedEntity : multivaluedEntities.getValue()) {
+        resource = resource.queryParam(multivaluedName, multivaluedEntities.getKey() + ":" + multivaluedEntity);
       }
     }
     return resource;

@@ -1,18 +1,15 @@
 package ru.hh.jersey.test;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.filter.LoggingFilter;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.net.URI;
 import java.util.Arrays;
 import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Test;
 
 public class JerseyClientTestTest extends JerseyClientTest {
@@ -20,7 +17,8 @@ public class JerseyClientTestTest extends JerseyClientTest {
   public void testReturnContent() throws Exception {
     String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
       + "<entity val=\"1\"/>";
-    setServerAnswer("/test", expectAnswer, "text/plain");
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, "/test").build(),
+                    ExpectedResponse.builder().entity(expectAnswer).mediaType("text/plain").build());
     WebResource resource = getWebResource(getBaseURI());
 
     String actualAnswer = resource.path("/test").get(String.class);
@@ -32,7 +30,7 @@ public class JerseyClientTestTest extends JerseyClientTest {
   public void testReturnMediaType() throws Exception {
     String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
       + "<entity val=\"1\"/>";
-    setServerAnswer("/test", expectAnswer);
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, "/test").build(), ExpectedResponse.builder().entity(expectAnswer).build());
     WebResource resource = getWebResource(getBaseURI());
 
     Entity actualAnswer = resource.path("/test").get(Entity.class);
@@ -44,11 +42,8 @@ public class JerseyClientTestTest extends JerseyClientTest {
   public void testFindResponseByQueryParams() throws Exception {
     String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><entity val=\"1\"/>";
 
-    StringKeyIgnoreCaseMultivaluedMap<String> queryParams = new StringKeyIgnoreCaseMultivaluedMap<String>();
-    queryParams.putSingle("testParam", "testValue");
-
-    setServerAnswer("/test", queryParams, expectAnswer);
-
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, "/test").addQueryParam("testParam", "testValue").build(),
+                    ExpectedResponse.builder().entity(expectAnswer).build());
     WebResource resource = getWebResource(getBaseURI());
 
     Entity actualAnswer = resource.path("/test").queryParam("testParam", "testValue").get(Entity.class);
@@ -56,48 +51,49 @@ public class JerseyClientTestTest extends JerseyClientTest {
     assertEquals("1", actualAnswer.getVal());
   }
 
-  @Test(expected = UniformInterfaceException.class)
+  @Test
   public void testReturn404StatusWhenQueryParamsNotPresentInResponse() throws Exception {
     String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><entity val=\"1\"/>";
 
-    StringKeyIgnoreCaseMultivaluedMap<String> queryParams = new StringKeyIgnoreCaseMultivaluedMap<String>();
-    queryParams.putSingle("testParam", "testValue");
-
-    setServerAnswer("/test", queryParams, expectAnswer, "text/plain");
-
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, "/test").addQueryParam("testParam", "testValue").build(),
+                    ExpectedResponse.builder().entity(expectAnswer).mediaType("text/plain").build());
     WebResource resource = getWebResource(getBaseURI());
 
-    try {
-      resource.path("/test").get(String.class);
-    } catch (UniformInterfaceException e) {
-      ClientResponse response = e.getResponse();
-      assertEquals(404, response.getStatus());
-      throw e;
-    }
-
-    fail();
+    ClientResponse response = resource.path("/test").get(ClientResponse.class);
+    assertEquals(404, response.getStatus());
   }
 
-  @Test(expected = UniformInterfaceException.class)
-  public void testReturnStatus() throws Exception {
-    setServerAnswer("/test", null, "", 301, "text/plain");
+  @Test
+  public void testReturn404StatusWhenMakeRequestWithUnexpectedHttpMethod() throws Exception {
+    String expectAnswer = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><entity val=\"1\"/>";
+
+    setServerAnswer(RequestMapping.builder(HttpMethod.PUT, "/test").build(),
+                    ExpectedResponse.builder().entity(expectAnswer).mediaType("text/plain").build());
+
     WebResource resource = getWebResource(getBaseURI());
 
-    try {
-      resource.path("/test").get(String.class);
-    } catch (UniformInterfaceException e) {
-      ClientResponse response = e.getResponse();
-      assertEquals(301, response.getStatus());
-      throw e;
-    }
-    fail();
+    ClientResponse response = resource.path("/test").get(ClientResponse.class);
+    assertEquals(404, response.getStatus());
+  }
+
+  @Test
+  public void testReturnStatus() throws Exception {
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, "/test").build(),
+                    ExpectedResponse.builder().status(ClientResponse.Status.MOVED_PERMANENTLY).mediaType("text/plain").build());
+    WebResource resource = getWebResource(getBaseURI());
+
+    final ClientResponse response = resource.path("/test").get(ClientResponse.class);
+
+    assertEquals(301, response.getStatus());
   }
 
   @Test
   public void testReturnHeaders() throws Exception {
     MultivaluedMapImpl headers = new MultivaluedMapImpl();
     headers.put("headerName", Arrays.asList("headerValue1", "headerValue2"));
-    setServerAnswer("/test", null, "", 200, headers, "text/plain");
+
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, "/test").build(),
+                    ExpectedResponse.builder().status(ClientResponse.Status.OK).addHeaders(headers).mediaType("text/plain").build());
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     client().addFilter(new LoggingFilter(new PrintStream(byteArrayOutputStream)));

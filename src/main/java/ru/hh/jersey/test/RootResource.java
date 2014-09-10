@@ -9,8 +9,10 @@ import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -27,52 +29,32 @@ import org.apache.commons.lang.math.NumberUtils;
 public class RootResource {
   private Map<RequestMapping, ExpectedResponse> pathContextMap = new HashMap<RequestMapping, ExpectedResponse>();
 
-  private void setHeaders(RequestMapping requestMapping, MultivaluedMap<String, String> responseHeaders) {
-    ExpectedResponse expectedResponse = getPathContext(requestMapping);
-    expectedResponse.setResponseHeaders(responseHeaders);
-  }
-
-  private void setEntity(RequestMapping requestMapping, String entity) {
-    ExpectedResponse expectedResponse = getPathContext(requestMapping);
-    expectedResponse.setEntity(entity);
-  }
-
-  private void setResponseStatus(RequestMapping requestMapping, ClientResponse.Status status) {
-    ExpectedResponse expectedResponse = getPathContext(requestMapping);
-    expectedResponse.setStatus(status);
-  }
-
-  private void setResponseMediaType(RequestMapping requestMapping, String responseMediaType) {
-    ExpectedResponse expectedResponse = getPathContext(requestMapping);
-    expectedResponse.setMediaType(responseMediaType);
-  }
-
-  private ExpectedResponse getPathContext(RequestMapping requestMapping) {
-    ExpectedResponse expectedResponse;
-    expectedResponse = pathContextMap.get(requestMapping);
-
-    if (expectedResponse == null) {
-      expectedResponse = new ExpectedResponse();
-      pathContextMap.put(requestMapping, expectedResponse);
-    }
-
-    return expectedResponse;
-  }
-
   @GET
   @Path("{path:.+}")
   public Response content(@PathParam("path") String path, @Context UriInfo uriInfo) {
-    return getResponseBuilder("/" + path, uriInfo.getQueryParameters()).build();
+    return getResponseBuilder(HttpMethod.GET, "/" + path, uriInfo.getQueryParameters()).build();
   }
 
   @POST
   @Path("{path:.+}")
-  public Response contentPost(@PathParam("path") String path) {
-    return getResponseBuilder("/" + path, null).build();
+  public Response contentPost(@PathParam("path") String path, @Context UriInfo uriInfo) {
+    return getResponseBuilder(HttpMethod.POST, "/" + path, uriInfo.getQueryParameters()).build();
   }
 
-  private Response.ResponseBuilder getResponseBuilder(String path, MultivaluedMap<String, String> queryParameters) {
-    ExpectedResponse expectedResponse = pathContextMap.get(new RequestMapping(path, queryParameters));
+  @PUT
+  @Path("{path:.+}")
+  public Response contentPut(@PathParam("path") String path, @Context UriInfo uriInfo) {
+    return getResponseBuilder(HttpMethod.PUT, "/" + path, uriInfo.getQueryParameters()).build();
+  }
+
+  @DELETE
+  @Path("{path:.+}")
+  public Response contentDelete(@PathParam("path") String path, @Context UriInfo uriInfo) {
+    return getResponseBuilder(HttpMethod.DELETE, "/" + path, uriInfo.getQueryParameters()).build();
+  }
+
+  private Response.ResponseBuilder getResponseBuilder(HttpMethod httpMethod, String path, MultivaluedMap<String, String> queryParameters) {
+    ExpectedResponse expectedResponse = pathContextMap.get(RequestMapping.builder(httpMethod, path).addQueryParams(queryParameters).build());
     if (expectedResponse == null) {
       return Response.status(Response.Status.NOT_FOUND);
     }
@@ -80,7 +62,7 @@ public class RootResource {
     ClientResponse.Status actualStatus = expectedResponse.getStatus();
     Response.ResponseBuilder responseBuilder = Response.status(actualStatus);
 
-    MultivaluedMap<String, String> responseHeaders = expectedResponse.getResponseHeaders();
+    MultivaluedMap<String, String> responseHeaders = expectedResponse.getHeaders();
     if (responseHeaders != null) {
       for (Map.Entry<String, List<String>> entry : responseHeaders.entrySet()) {
         for (String headerValue : entry.getValue()) {
@@ -97,49 +79,58 @@ public class RootResource {
 
   @POST
   @Path("/setParams")
-  @Produces({ "text/plain" })
-  public Response setParameters(@Context
-                                UriInfo ui) throws UnsupportedEncodingException {
+  @Produces({"text/plain"})
+  public Response setParameters(@Context UriInfo ui) throws UnsupportedEncodingException {
     MultivaluedMap<String, String> queryParameters = ui.getQueryParameters();
 
     RequestMapping requestMapping = generateRequestMapping(queryParameters);
+    ExpectedResponse.ExpectedResponseBuilder expectedResponseBuilder = ExpectedResponse.builder();
 
-    List<String> headers = queryParameters.get("header");
+    List<String> headers = queryParameters.get("response.headers");
     if (headers != null && !headers.isEmpty()) {
-      setHeaders(requestMapping, parseMultivaluedMapFromQueryParameter(headers));
+      expectedResponseBuilder.addHeaders(parseMultivaluedMapFromQueryParameter(headers));
     }
 
-    String status = queryParameters.getFirst("status");
+    String status = queryParameters.getFirst("response.status");
     if (StringUtils.isNotBlank(status) && StringUtils.isNumeric(status)) {
-      setResponseStatus(requestMapping, ClientResponse.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
+      expectedResponseBuilder.status(ClientResponse.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
     }
 
-    String entity = queryParameters.getFirst("entity");
+    String entity = queryParameters.getFirst("response.entity");
     if (StringUtils.isNotBlank(entity)) {
-      setEntity(requestMapping, URLDecoder.decode(entity, "UTF-8"));
+      expectedResponseBuilder.entity(URLDecoder.decode(entity, "UTF-8"));
     }
 
-    String responseMediaType = queryParameters.getFirst("mediaType");
+    String responseMediaType = queryParameters.getFirst("response.mediaType");
     if (StringUtils.isNotBlank(responseMediaType)) {
-      setResponseMediaType(requestMapping, responseMediaType.trim());
+      expectedResponseBuilder.mediaType(responseMediaType.trim());
     }
+
+    pathContextMap.put(requestMapping, expectedResponseBuilder.build());
 
     return Response.status(Response.Status.OK).entity("ok").build();
   }
 
   private RequestMapping generateRequestMapping(MultivaluedMap<String, String> queryParameters) {
-    String path = queryParameters.getFirst("path");
+    HttpMethod httpMethod;
+    if (StringUtils.isBlank(queryParameters.getFirst("request.httpMethod"))) {
+      httpMethod = HttpMethod.GET;
+    } else {
+      httpMethod = HttpMethod.valueOf(queryParameters.getFirst("request.httpMethod").toUpperCase());
+    }
+
+    String path = queryParameters.getFirst("request.path");
     if (StringUtils.isBlank(path)) {
       path = "/";
     }
 
     MultivaluedMap<String, String> requestParams = null;
-    List<String> params = queryParameters.get("queryParams");
+    List<String> params = queryParameters.get("request.queryParams");
     if (params != null && !params.isEmpty()) {
       requestParams = parseMultivaluedMapFromQueryParameter(params);
     }
 
-    return new RequestMapping(path, requestParams);
+    return RequestMapping.builder(httpMethod, path).addQueryParams(requestParams).build();
   }
 
   private MultivaluedMap<String, String> parseMultivaluedMapFromQueryParameter(List<String> queryParameterValues) {
