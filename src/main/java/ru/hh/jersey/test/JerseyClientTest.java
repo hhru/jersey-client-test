@@ -10,7 +10,6 @@ import com.sun.jersey.test.framework.WebAppDescriptor;
 import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
 import com.sun.jersey.test.framework.spi.container.grizzly.web.GrizzlyWebTestContainerFactory;
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
@@ -110,21 +109,28 @@ public abstract class JerseyClientTest extends JerseyTest {
       String mediaType) {
       setServerAnswer(RequestMapping.builder(HttpMethod.GET, path).addQueryParams(queryParams).build(),
                       ExpectedResponse.builder()
-                        .entity(content).status(ClientResponse.Status.fromStatusCode(statusCode)).addHeaders(headers).mediaType(mediaType).build());
+                        .content(content).status(ClientResponse.Status.fromStatusCode(statusCode)).addHeaders(headers).mediaType(mediaType).build());
+  }
+
+  protected List<ActualRequest> getActualRequests(RequestMapping requestMapping) {
+    WebResource resource = resource().path("/getActualRequests");
+    resource = fillRequestMappingPart(resource, requestMapping);
+    final ActualRequestList actualRequestList = resource.accept(MediaType.APPLICATION_XML_TYPE).get(ActualRequestList.class);
+    return actualRequestList.getActualRequests();
   }
 
   protected void setServerAnswer(RequestMapping requestMapping, ExpectedResponse expectedResponse) {
-    URI baseURI = getBaseURI();
+    WebResource resource = client().resource(getBaseURI()).path("/setParams");
 
-    WebResource resource = client().resource(baseURI).path("/setParams");
+    resource = fillRequestMappingPart(resource, requestMapping);
 
     try {
-      resource = resource.queryParam("response.status", String.valueOf(expectedResponse.getStatus().getStatusCode()))
-        .queryParam("request.path", URLEncoder.encode(requestMapping.getPath(), "UTF-8"));
+      resource = resource.queryParam("response.status", String.valueOf(expectedResponse.getStatus().getStatusCode()));
 
-      if (StringUtils.isNotBlank(expectedResponse.getEntity())){
-        resource = resource.queryParam("response.entity", URLEncoder.encode(expectedResponse.getEntity(), "UTF-8"));
+      if (StringUtils.isNotBlank(expectedResponse.getContent())){
+        resource = resource.queryParam("response.content", URLEncoder.encode(expectedResponse.getContent(), "UTF-8").replace("+", "%20"));
       }
+
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException(e);
     }
@@ -133,23 +139,33 @@ public abstract class JerseyClientTest extends JerseyTest {
       resource = addMultivaluedMapsToRequest(expectedResponse.getHeaders(), "response.headers", resource);
     }
 
-    if (requestMapping.getParams() != null && !requestMapping.getParams().isEmpty()) {
-      resource = addMultivaluedMapsToRequest(requestMapping.getParams(), "request.queryParams", resource);
-    }
-
     if (StringUtils.isNotBlank(expectedResponse.getMediaType())) {
       resource = resource.queryParam("response.mediaType", expectedResponse.getMediaType());
     }
 
-    resource = resource.queryParam("request.httpMethod", requestMapping.getHttpMethod().name());
-
     resource.type("application/x-www-form-urlencoded").accept(MediaType.TEXT_PLAIN_TYPE).post(String.class);
+  }
+
+  private WebResource fillRequestMappingPart(WebResource resource, RequestMapping requestMapping){
+    WebResource resourceWithRequestMapping = resource.queryParam("request.httpMethod", requestMapping.getHttpMethod().name());
+
+    if (requestMapping.getParams() != null && !requestMapping.getParams().isEmpty()) {
+      resourceWithRequestMapping = addMultivaluedMapsToRequest(requestMapping.getParams(), "request.queryParams", resourceWithRequestMapping);
+    }
+
+    try {
+      resourceWithRequestMapping = resourceWithRequestMapping.queryParam("request.path", URLEncoder.encode(requestMapping.getPath(), "UTF-8"));
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+
+    return resourceWithRequestMapping;
   }
 
   private WebResource addMultivaluedMapsToRequest(MultivaluedMap<String, String> mapWithValues, String multivaluedName, WebResource resource) {
     for (Map.Entry<String, List<String>> multivaluedEntities : mapWithValues.entrySet()) {
       for (String multivaluedEntity : multivaluedEntities.getValue()) {
-        resource = resource.queryParam(multivaluedName, multivaluedEntities.getKey() + ":" + multivaluedEntity);
+        resource = resource.queryParam(multivaluedName, multivaluedEntities.getKey() + "," + multivaluedEntity);
       }
     }
     return resource;

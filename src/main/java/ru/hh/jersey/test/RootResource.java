@@ -17,6 +17,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -28,33 +29,44 @@ import org.apache.commons.lang.math.NumberUtils;
 @Singleton
 public class RootResource {
   private Map<RequestMapping, ExpectedResponse> pathContextMap = new HashMap<RequestMapping, ExpectedResponse>();
+  private MultivaluedMap<RequestMapping, ActualRequest> requestsHistory = new LinkedValuesMultivaluedMap<RequestMapping, ActualRequest>();
 
   @GET
   @Path("{path:.+}")
-  public Response content(@PathParam("path") String path, @Context UriInfo uriInfo) {
-    return getResponseBuilder(HttpMethod.GET, "/" + path, uriInfo.getQueryParameters()).build();
+  public Response content(@PathParam("path") String path, @Context UriInfo uriInfo, @Context HttpHeaders headers) {
+    return getResponseBuilder(HttpMethod.GET, "/" + path, uriInfo.getQueryParameters(), headers.getRequestHeaders(), null).build();
   }
 
   @POST
   @Path("{path:.+}")
-  public Response contentPost(@PathParam("path") String path, @Context UriInfo uriInfo) {
-    return getResponseBuilder(HttpMethod.POST, "/" + path, uriInfo.getQueryParameters()).build();
+  public Response contentPost(@PathParam("path") String path, @Context UriInfo uriInfo, @Context HttpHeaders headers, String content) {
+    return getResponseBuilder(HttpMethod.POST, "/" + path, uriInfo.getQueryParameters(), headers.getRequestHeaders(), content).build();
   }
 
   @PUT
   @Path("{path:.+}")
-  public Response contentPut(@PathParam("path") String path, @Context UriInfo uriInfo) {
-    return getResponseBuilder(HttpMethod.PUT, "/" + path, uriInfo.getQueryParameters()).build();
+  public Response contentPut(@PathParam("path") String path, @Context UriInfo uriInfo, @Context HttpHeaders headers, String content) {
+    return getResponseBuilder(HttpMethod.PUT, "/" + path, uriInfo.getQueryParameters(), headers.getRequestHeaders(), content).build();
   }
 
   @DELETE
   @Path("{path:.+}")
-  public Response contentDelete(@PathParam("path") String path, @Context UriInfo uriInfo) {
-    return getResponseBuilder(HttpMethod.DELETE, "/" + path, uriInfo.getQueryParameters()).build();
+  public Response contentDelete(@PathParam("path") String path, @Context UriInfo uriInfo, @Context HttpHeaders headers, String content) {
+    return getResponseBuilder(HttpMethod.DELETE, "/" + path, uriInfo.getQueryParameters(), headers.getRequestHeaders(), content).build();
   }
 
-  private Response.ResponseBuilder getResponseBuilder(HttpMethod httpMethod, String path, MultivaluedMap<String, String> queryParameters) {
-    ExpectedResponse expectedResponse = pathContextMap.get(RequestMapping.builder(httpMethod, path).addQueryParams(queryParameters).build());
+  private Response.ResponseBuilder getResponseBuilder(HttpMethod httpMethod,
+                                                      String path,
+                                                      MultivaluedMap<String, String> queryParameters,
+                                                      MultivaluedMap<String, String> headers,
+                                                      String mappedContent) {
+    String content = StringUtils.isBlank(mappedContent) ? null : mappedContent;
+    final RequestMapping requestMapping = RequestMapping.builder(httpMethod, path)
+      .addQueryParams(queryParameters)
+      .build();
+    requestsHistory.add(requestMapping, new ActualRequest(content, headers));
+
+    ExpectedResponse expectedResponse = pathContextMap.get(requestMapping);
     if (expectedResponse == null) {
       return Response.status(Response.Status.NOT_FOUND);
     }
@@ -71,7 +83,7 @@ public class RootResource {
       }
     }
 
-    responseBuilder.entity(expectedResponse.getEntity());
+    responseBuilder.entity(expectedResponse.getContent());
     responseBuilder.type(expectedResponse.getMediaType());
 
     return responseBuilder;
@@ -96,9 +108,9 @@ public class RootResource {
       expectedResponseBuilder.status(ClientResponse.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
     }
 
-    String entity = queryParameters.getFirst("response.entity");
+    String entity = queryParameters.getFirst("response.content");
     if (StringUtils.isNotBlank(entity)) {
-      expectedResponseBuilder.entity(URLDecoder.decode(entity, "UTF-8"));
+      expectedResponseBuilder.content(URLDecoder.decode(entity, "UTF-8"));
     }
 
     String responseMediaType = queryParameters.getFirst("response.mediaType");
@@ -109,6 +121,18 @@ public class RootResource {
     pathContextMap.put(requestMapping, expectedResponseBuilder.build());
 
     return Response.status(Response.Status.OK).entity("ok").build();
+  }
+
+  @GET
+  @Path("/getActualRequests")
+  @Produces({"application/xml"})
+  public Response getRequest(@Context UriInfo ui) throws UnsupportedEncodingException {
+    MultivaluedMap<String, String> queryParameters = ui.getQueryParameters();
+
+    RequestMapping requestMapping = generateRequestMapping(queryParameters);
+    final List<ActualRequest> actualRequests = requestsHistory.get(requestMapping);
+
+    return Response.status(Response.Status.OK).entity(new ActualRequestList(actualRequests)).build();
   }
 
   private RequestMapping generateRequestMapping(MultivaluedMap<String, String> queryParameters) {
@@ -130,13 +154,15 @@ public class RootResource {
       requestParams = parseMultivaluedMapFromQueryParameter(params);
     }
 
-    return RequestMapping.builder(httpMethod, path).addQueryParams(requestParams).build();
+    final RequestMapping.RequestMappingBuilder requestMappingBuilder = RequestMapping.builder(httpMethod, path).addQueryParams(requestParams);
+
+    return requestMappingBuilder.build();
   }
 
   private MultivaluedMap<String, String> parseMultivaluedMapFromQueryParameter(List<String> queryParameterValues) {
     MultivaluedMap<String, String> result = new StringKeyIgnoreCaseMultivaluedMap<String>();
     for (String queryParameterValue : queryParameterValues) {
-      String[] queryParameterValueParts = queryParameterValue.split(":");
+      String[] queryParameterValueParts = queryParameterValue.split(",");
       String mapKey = queryParameterValueParts[0];
       String mapValue = queryParameterValueParts[1];
       result.add(mapKey, mapValue);

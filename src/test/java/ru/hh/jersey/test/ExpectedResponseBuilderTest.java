@@ -16,7 +16,7 @@ public class ExpectedResponseBuilderTest {
     final ExpectedResponse expectedResponse = ExpectedResponse.builder().build();
 
     assertNotNull(expectedResponse);
-    assertNull(expectedResponse.getEntity());
+    assertNull(expectedResponse.getContent());
     assertNull(expectedResponse.getHeaders());
     assertEquals("application/xml", expectedResponse.getMediaType());
     assertEquals(ClientResponse.Status.OK, expectedResponse.getStatus());
@@ -25,13 +25,13 @@ public class ExpectedResponseBuilderTest {
   @Test
   public void testCommonParameters() throws Exception {
     final ExpectedResponse expectedResponse = ExpectedResponse.builder()
-      .entity("test response")
+      .content("test response")
       .mediaType("text/plain")
       .status(ClientResponse.Status.FORBIDDEN)
       .build();
 
     assertNotNull(expectedResponse);
-    assertEquals("test response", expectedResponse.getEntity());
+    assertEquals("test response", expectedResponse.getContent());
     assertEquals("text/plain", expectedResponse.getMediaType());
     assertEquals(ClientResponse.Status.FORBIDDEN, expectedResponse.getStatus());
     assertNull(expectedResponse.getHeaders());

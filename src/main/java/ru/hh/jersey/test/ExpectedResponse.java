@@ -8,7 +8,7 @@ import java.util.List;
 
 public class ExpectedResponse {
   private MultivaluedMap<String, String> headers;
-  private String entity;
+  private String content;
   private ClientResponse.Status status = ClientResponse.Status.OK;
   private String mediaType = "application/xml";
 
@@ -18,8 +18,8 @@ public class ExpectedResponse {
     return headers;
   }
 
-  public String getEntity() {
-    return entity;
+  public String getContent() {
+    return content;
   }
 
   public ClientResponse.Status getStatus() {
@@ -46,8 +46,8 @@ public class ExpectedResponse {
       return expectedResponse;
     }
 
-    public ExpectedResponseBuilder entity(String entity) {
-      expectedResponse.entity = entity;
+    public ExpectedResponseBuilder content(String content) {
+      expectedResponse.content = content;
       return this;
     }
 

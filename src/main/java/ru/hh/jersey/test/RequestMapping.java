@@ -7,8 +7,8 @@ import javax.ws.rs.core.MultivaluedMap;
 import java.util.List;
 
 public class RequestMapping {
-  private String path;
-  private HttpMethod httpMethod;
+  private final String path;
+  private final HttpMethod httpMethod;
   private MultivaluedMap<String, String> params = new StringKeyIgnoreCaseMultivaluedMap<String>();
 
   private RequestMapping(HttpMethod httpMethod, String path) {
@@ -34,24 +34,14 @@ public class RequestMapping {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
 
     RequestMapping that = (RequestMapping) o;
 
-    if (params != null ? !params.equals(that.params) : that.params != null) {
-      return false;
-    }
-    if (path != null ? !path.equals(that.path) : that.path != null) {
-      return false;
-    }
-    if (httpMethod != null ? !httpMethod.equals(that.httpMethod) : that.httpMethod != null) {
-      return false;
-    }
+    if (httpMethod != that.httpMethod) return false;
+    if (params != null ? !params.equals(that.params) : that.params != null) return false;
+    if (path != null ? !path.equals(that.path) : that.path != null) return false;
 
     return true;
   }
