@@ -9,7 +9,10 @@ import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.WebAppDescriptor;
 import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
 import com.sun.jersey.test.framework.spi.container.grizzly.web.GrizzlyWebTestContainerFactory;
+
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.ServerSocket;
 import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,9 @@ import org.junit.After;
 import org.junit.Before;
 
 public abstract class JerseyClientTest extends JerseyTest {
+
+  private Integer port;
+
   // avoid accidental overriding in subclasses
   @Before
   public void setUpJerseyClientTest() throws Exception {
@@ -42,6 +48,25 @@ public abstract class JerseyClientTest extends JerseyTest {
     return new WebAppDescriptor.Builder().initParam(WebComponent.RESOURCE_CONFIG_CLASS, ClassNamesResourceConfig.class.getName())
     .initParam(ClassNamesResourceConfig.PROPERTY_CLASSNAMES, RootResource.class.getName())
     .build();
+  }
+
+  @Override
+  protected int getPort(int defaultPort) {
+    if (port == null) {
+      final int freePort = getFreePort();
+      port = super.getPort(freePort);
+    }
+    return port;
+  }
+
+  private static int getFreePort() {
+    try {
+      try(final ServerSocket serverSocket = new ServerSocket(0)){
+        return serverSocket.getLocalPort();
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("failed to find free port", e);
+    }
   }
 
   /**
