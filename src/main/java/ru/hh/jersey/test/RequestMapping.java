@@ -1,7 +1,8 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.internal.util.collection.StringKeyIgnoreCaseMultivaluedMap;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.ws.rs.core.MultivaluedMap;
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.List;
 public class RequestMapping {
   private final String path;
   private final HttpMethod httpMethod;
-  private MultivaluedMap<String, String> params = new StringKeyIgnoreCaseMultivaluedMap<String>();
+  private MultivaluedMap<String, String> params = new StringKeyIgnoreCaseMultivaluedMap<>();
 
   private RequestMapping(HttpMethod httpMethod, String path) {
     this.httpMethod = httpMethod;
@@ -34,14 +35,24 @@ public class RequestMapping {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
 
     RequestMapping that = (RequestMapping) o;
 
-    if (httpMethod != that.httpMethod) return false;
-    if (params != null ? !params.equals(that.params) : that.params != null) return false;
-    if (path != null ? !path.equals(that.path) : that.path != null) return false;
+    if (httpMethod != that.httpMethod) {
+      return false;
+    }
+    if (params != null ? !params.equals(that.params) : that.params != null) {
+      return false;
+    }
+    if (path != null ? !path.equals(that.path) : that.path != null) {
+      return false;
+    }
 
     return true;
   }
@@ -63,7 +74,7 @@ public class RequestMapping {
         throw new IllegalStateException("Http method should not be null");
       }
 
-      if (StringUtils.isBlank(path)){
+      if (StringUtils.isBlank(path)) {
         throw new IllegalStateException("path should not be empty");
       }
 

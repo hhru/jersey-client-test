@@ -1,15 +1,16 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
+import org.glassfish.jersey.internal.util.collection.StringKeyIgnoreCaseMultivaluedMap;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 import java.util.List;
 
 public class ExpectedResponse {
   private MultivaluedMap<String, String> headers;
   private String content;
-  private ClientResponse.Status status = ClientResponse.Status.OK;
+  private Response.Status status = Response.Status.OK;
   private String mediaType = "application/xml";
 
   ExpectedResponse() { }
@@ -22,7 +23,7 @@ public class ExpectedResponse {
     return content;
   }
 
-  public ClientResponse.Status getStatus() {
+  public Response.Status getStatus() {
     return status;
   }
 
@@ -51,7 +52,7 @@ public class ExpectedResponse {
       return this;
     }
 
-    public ExpectedResponseBuilder status(ClientResponse.Status status) {
+    public ExpectedResponseBuilder status(Response.Status status) {
       expectedResponse.status = status;
       return this;
     }
@@ -63,7 +64,7 @@ public class ExpectedResponse {
 
     public ExpectedResponseBuilder addHeader(String name, String value){
       if (expectedResponse.headers == null) {
-        expectedResponse.headers = new StringKeyIgnoreCaseMultivaluedMap<String>();
+        expectedResponse.headers = new StringKeyIgnoreCaseMultivaluedMap<>();
       }
 
       expectedResponse.headers.putSingle(name, value);
@@ -73,7 +74,7 @@ public class ExpectedResponse {
 
     public ExpectedResponseBuilder addHeader(String name, List<String> values){
       if (expectedResponse.headers == null) {
-        expectedResponse.headers = new StringKeyIgnoreCaseMultivaluedMap<String>();
+        expectedResponse.headers = new StringKeyIgnoreCaseMultivaluedMap<>();
       }
 
       expectedResponse.headers.put(name, values);
@@ -87,7 +88,7 @@ public class ExpectedResponse {
       }
 
       if (expectedResponse.headers == null) {
-        expectedResponse.headers = new StringKeyIgnoreCaseMultivaluedMap<String>();
+        expectedResponse.headers = new StringKeyIgnoreCaseMultivaluedMap<>();
       }
 
       expectedResponse.headers.putAll(headers);

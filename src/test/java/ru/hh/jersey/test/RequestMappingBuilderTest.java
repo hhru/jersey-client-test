@@ -1,6 +1,6 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
+import org.glassfish.jersey.internal.util.collection.StringKeyIgnoreCaseMultivaluedMap;
 import org.junit.Test;
 import javax.ws.rs.core.MultivaluedMap;
 import java.util.Arrays;
@@ -10,7 +10,7 @@ import static org.junit.Assert.assertTrue;
 
 public class RequestMappingBuilderTest {
   @Test
-  public void testCreateRequestMappingWithoutOptionalProperties() throws Exception {
+  public void testCreateRequestMappingWithoutOptionalProperties() {
     final RequestMapping requestMapping = RequestMapping.builder(HttpMethod.PUT, "test/path").build();
 
     assertEquals(HttpMethod.PUT, requestMapping.getHttpMethod());
@@ -18,7 +18,7 @@ public class RequestMappingBuilderTest {
   }
 
   @Test
-  public void shouldCreateRequestMappingWhenAddNullQueryParams() throws Exception {
+  public void shouldCreateRequestMappingWhenAddNullQueryParams() {
     final RequestMapping requestMapping = RequestMapping.builder(HttpMethod.PUT, "test/path")
       .addQueryParam("name", "value")
       .addQueryParams(null)
@@ -33,9 +33,8 @@ public class RequestMappingBuilderTest {
   }
 
   @Test
-  public void testCreateRequestMappingWithQueryParams() throws Exception {
-
-    final StringKeyIgnoreCaseMultivaluedMap<String> queryParametersFromMap = new StringKeyIgnoreCaseMultivaluedMap<String>();
+  public void testCreateRequestMappingWithQueryParams() {
+    final StringKeyIgnoreCaseMultivaluedMap<String> queryParametersFromMap = new StringKeyIgnoreCaseMultivaluedMap<>();
     queryParametersFromMap.add("fromMap", "fromMapValue1");
     queryParametersFromMap.add("fromMap", "fromMapValue2");
 
@@ -67,17 +66,17 @@ public class RequestMappingBuilderTest {
   }
 
   @Test(expected = IllegalStateException.class)
-  public void shouldThrowExceptionWhenCreateBuilderWithoutHttpMethod() throws Exception {
+  public void shouldThrowExceptionWhenCreateBuilderWithoutHttpMethod() {
     RequestMapping.builder(null, "test/path");
   }
 
   @Test(expected = IllegalStateException.class)
-  public void shouldThrowExceptionWhenCreateBuilderWithoutPath() throws Exception {
+  public void shouldThrowExceptionWhenCreateBuilderWithoutPath() {
     RequestMapping.builder(HttpMethod.PUT, null);
   }
 
   @Test(expected = IllegalStateException.class)
-  public void shouldThrowExceptionWhenCreateBuilderWithEmptyPath() throws Exception {
+  public void shouldThrowExceptionWhenCreateBuilderWithEmptyPath() {
     RequestMapping.builder(HttpMethod.PUT, "  ");
   }
 }

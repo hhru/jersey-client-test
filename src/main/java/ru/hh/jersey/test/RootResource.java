@@ -1,14 +1,11 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
-import com.sun.jersey.spi.resource.Singleton;
-
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.inject.Singleton;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -18,18 +15,20 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.glassfish.jersey.internal.util.collection.StringKeyIgnoreCaseMultivaluedMap;
 
 @Path("/")
 @Singleton
 public class RootResource {
-  private Map<RequestMapping, ExpectedResponse> pathContextMap = new HashMap<RequestMapping, ExpectedResponse>();
-  private MultivaluedMap<RequestMapping, ActualRequest> requestsHistory = new LinkedValuesMultivaluedMap<RequestMapping, ActualRequest>();
+  private Map<RequestMapping, ExpectedResponse> pathContextMap = new HashMap<>();
+  private MultivaluedMap<RequestMapping, ActualRequest> requestsHistory = new MultivaluedHashMap<>();
 
   @GET
   @Path("{path:.+}")
@@ -71,7 +70,7 @@ public class RootResource {
       return Response.status(Response.Status.NOT_FOUND);
     }
 
-    ClientResponse.Status actualStatus = expectedResponse.getStatus();
+    Response.Status actualStatus = expectedResponse.getStatus();
     Response.ResponseBuilder responseBuilder = Response.status(actualStatus);
 
     MultivaluedMap<String, String> responseHeaders = expectedResponse.getHeaders();
@@ -105,7 +104,7 @@ public class RootResource {
 
     String status = queryParameters.getFirst("response.status");
     if (StringUtils.isNotBlank(status) && StringUtils.isNumeric(status)) {
-      expectedResponseBuilder.status(ClientResponse.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
+      expectedResponseBuilder.status(Response.Status.fromStatusCode(NumberUtils.toInt(status, 500)));
     }
 
     String entity = queryParameters.getFirst("response.content");
@@ -126,7 +125,7 @@ public class RootResource {
   @GET
   @Path("/getActualRequests")
   @Produces({"application/xml"})
-  public Response getRequest(@Context UriInfo ui) throws UnsupportedEncodingException {
+  public Response getRequest(@Context UriInfo ui) {
     MultivaluedMap<String, String> queryParameters = ui.getQueryParameters();
 
     RequestMapping requestMapping = generateRequestMapping(queryParameters);
@@ -160,7 +159,7 @@ public class RootResource {
   }
 
   private MultivaluedMap<String, String> parseMultivaluedMapFromQueryParameter(List<String> queryParameterValues) {
-    MultivaluedMap<String, String> result = new StringKeyIgnoreCaseMultivaluedMap<String>();
+    MultivaluedMap<String, String> result = new StringKeyIgnoreCaseMultivaluedMap<>();
     for (String queryParameterValue : queryParameterValues) {
       String[] queryParameterValueParts = queryParameterValue.split(",");
       String mapKey = queryParameterValueParts[0];

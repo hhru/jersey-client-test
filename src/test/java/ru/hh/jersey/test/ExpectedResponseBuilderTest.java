@@ -1,8 +1,9 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.core.util.StringKeyIgnoreCaseMultivaluedMap;
+import org.glassfish.jersey.internal.util.collection.StringKeyIgnoreCaseMultivaluedMap;
 import org.junit.Test;
+
+import javax.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
@@ -12,33 +13,33 @@ import static org.junit.Assert.assertTrue;
 
 public class ExpectedResponseBuilderTest {
   @Test
-  public void testDefaultResponse() throws Exception {
+  public void testDefaultResponse() {
     final ExpectedResponse expectedResponse = ExpectedResponse.builder().build();
 
     assertNotNull(expectedResponse);
     assertNull(expectedResponse.getContent());
     assertNull(expectedResponse.getHeaders());
     assertEquals("application/xml", expectedResponse.getMediaType());
-    assertEquals(ClientResponse.Status.OK, expectedResponse.getStatus());
+    assertEquals(Response.Status.OK, expectedResponse.getStatus());
   }
 
   @Test
-  public void testCommonParameters() throws Exception {
+  public void testCommonParameters() {
     final ExpectedResponse expectedResponse = ExpectedResponse.builder()
       .content("test response")
       .mediaType("text/plain")
-      .status(ClientResponse.Status.FORBIDDEN)
+      .status(Response.Status.FORBIDDEN)
       .build();
 
     assertNotNull(expectedResponse);
     assertEquals("test response", expectedResponse.getContent());
     assertEquals("text/plain", expectedResponse.getMediaType());
-    assertEquals(ClientResponse.Status.FORBIDDEN, expectedResponse.getStatus());
+    assertEquals(Response.Status.FORBIDDEN, expectedResponse.getStatus());
     assertNull(expectedResponse.getHeaders());
   }
 
   @Test
-  public void testHeaders() throws Exception {
+  public void testHeaders() {
 
     final StringKeyIgnoreCaseMultivaluedMap<String> headersFromMap = new StringKeyIgnoreCaseMultivaluedMap<String>();
     headersFromMap.add("fromMap", "fromMapValue1");

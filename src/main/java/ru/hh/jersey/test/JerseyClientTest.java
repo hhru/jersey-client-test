@@ -1,72 +1,25 @@
 package ru.hh.jersey.test;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.core.ClassNamesResourceConfig;
-import com.sun.jersey.spi.container.servlet.WebComponent;
-import com.sun.jersey.test.framework.AppDescriptor;
-import com.sun.jersey.test.framework.JerseyTest;
-import com.sun.jersey.test.framework.WebAppDescriptor;
-import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
-import com.sun.jersey.test.framework.spi.container.grizzly.web.GrizzlyWebTestContainerFactory;
+import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.test.JerseyTest;
 
-import java.io.IOException;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Application;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 import java.io.UnsupportedEncodingException;
-import java.net.ServerSocket;
 import java.net.URLEncoder;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
-import org.apache.commons.lang.StringUtils;
-import org.junit.After;
-import org.junit.Before;
 
 public abstract class JerseyClientTest extends JerseyTest {
 
-  private Integer port;
-
-  // avoid accidental overriding in subclasses
-  @Before
-  public void setUpJerseyClientTest() throws Exception {
-    super.setUp();
-  }
-
-  // avoid accidental overriding in subclasses
-  @After
-  public void tearDownJerseyClientTest() throws Exception {
-    super.tearDown();
-  }
-
   @Override
-  public TestContainerFactory getTestContainerFactory() {
-    return new GrizzlyWebTestContainerFactory();
-  }
-
-  @Override
-  protected AppDescriptor configure() {
-    return new WebAppDescriptor.Builder().initParam(WebComponent.RESOURCE_CONFIG_CLASS, ClassNamesResourceConfig.class.getName())
-    .initParam(ClassNamesResourceConfig.PROPERTY_CLASSNAMES, RootResource.class.getName())
-    .build();
-  }
-
-  @Override
-  protected int getPort(int defaultPort) {
-    if (port == null) {
-      final int freePort = getFreePort();
-      port = super.getPort(freePort);
-    }
-    return port;
-  }
-
-  private static int getFreePort() {
-    try {
-      try(final ServerSocket serverSocket = new ServerSocket(0)){
-        return serverSocket.getLocalPort();
-      }
-    } catch (IOException e) {
-      throw new RuntimeException("failed to find free port", e);
-    }
+  protected Application configure() {
+    return new ResourceConfig(RootResource.class);
   }
 
   /**
@@ -74,7 +27,7 @@ public abstract class JerseyClientTest extends JerseyTest {
    */
   @Deprecated
   protected void setServerAnswer(String path, String content) {
-    setServerAnswer(path, content, 200);
+    setServerAnswer(path, content, Response.Status.OK);
   }
 
   /**
@@ -82,7 +35,7 @@ public abstract class JerseyClientTest extends JerseyTest {
    */
   @Deprecated
   protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content) {
-    setServerAnswer(path, queryParams, content, 200);
+    setServerAnswer(path, queryParams, content, Response.Status.OK);
   }
 
   /**
@@ -90,7 +43,7 @@ public abstract class JerseyClientTest extends JerseyTest {
    */
   @Deprecated
   protected void setServerAnswer(String path, String content, String mediaType) {
-    setServerAnswer(path, null, content, 200, null, mediaType);
+    setServerAnswer(path, null, content, Response.Status.OK, null, mediaType);
   }
 
   /**
@@ -98,31 +51,31 @@ public abstract class JerseyClientTest extends JerseyTest {
    */
   @Deprecated
   protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, String mediaType) {
-    setServerAnswer(path, queryParams, content, 200, null, mediaType);
+    setServerAnswer(path, queryParams, content, Response.Status.OK, null, mediaType);
   }
 
   /**
    * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
    */
   @Deprecated
-  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer statusCode, String mediaType) {
-    setServerAnswer(path, queryParams, content, statusCode, null, mediaType);
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Response.Status responseStatus, String mediaType) {
+    setServerAnswer(path, queryParams, content, responseStatus, null, mediaType);
   }
 
   /**
    * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
    */
   @Deprecated
-  protected void setServerAnswer(String path, String content, Integer statusCode) {
-    setServerAnswer(path, null, content, statusCode, null, "application/xml");
+  protected void setServerAnswer(String path, String content, Response.Status responseStatus) {
+    setServerAnswer(path, null, content, responseStatus, null, "application/xml");
   }
 
   /**
    * @deprecated use {@link #setServerAnswer(RequestMapping, ExpectedResponse)} instead
    */
   @Deprecated
-  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Integer statusCode) {
-    setServerAnswer(path, queryParams, content, statusCode, null, "application/xml");
+  protected void setServerAnswer(String path, MultivaluedMap<String, String> queryParams, String content, Response.Status responseStatus) {
+    setServerAnswer(path, queryParams, content, responseStatus, null, "application/xml");
   }
 
   /**
@@ -130,30 +83,31 @@ public abstract class JerseyClientTest extends JerseyTest {
    */
   @Deprecated
   protected void setServerAnswer(
-      String path, MultivaluedMap<String, String> queryParams, String content, Integer statusCode, MultivaluedMap<String, String> headers,
-      String mediaType) {
-      setServerAnswer(RequestMapping.builder(HttpMethod.GET, path).addQueryParams(queryParams).build(),
-                      ExpectedResponse.builder()
-                        .content(content).status(ClientResponse.Status.fromStatusCode(statusCode)).addHeaders(headers).mediaType(mediaType).build());
+    String path, MultivaluedMap<String, String> queryParams, String content, Response.Status responseStatus, MultivaluedMap<String, String> headers,
+    String mediaType) {
+    setServerAnswer(RequestMapping.builder(HttpMethod.GET, path).addQueryParams(queryParams).build(),
+      ExpectedResponse.builder()
+        .content(content).status(responseStatus).addHeaders(headers).mediaType(mediaType).build());
   }
 
   protected List<ActualRequest> getActualRequests(RequestMapping requestMapping) {
-    WebResource resource = resource().path("/getActualRequests");
+    WebTarget resource = target().path("/getActualRequests");
     resource = fillRequestMappingPart(resource, requestMapping);
-    final ActualRequestList actualRequestList = resource.accept(MediaType.APPLICATION_XML_TYPE).get(ActualRequestList.class);
+    final ActualRequestList actualRequestList = resource.request().accept(MediaType.APPLICATION_XML_TYPE).get(ActualRequestList.class);
     return actualRequestList.getActualRequests();
   }
 
   protected void setServerAnswer(RequestMapping requestMapping, ExpectedResponse expectedResponse) {
-    WebResource resource = client().resource(getBaseURI()).path("/setParams");
+    WebTarget resource = client().target(getBaseUri()).path("/setParams");
 
     resource = fillRequestMappingPart(resource, requestMapping);
 
     try {
       resource = resource.queryParam("response.status", String.valueOf(expectedResponse.getStatus().getStatusCode()));
 
-      if (StringUtils.isNotBlank(expectedResponse.getContent())){
-        resource = resource.queryParam("response.content", URLEncoder.encode(expectedResponse.getContent(), "UTF-8").replace("+", "%20"));
+      if (StringUtils.isNotBlank(expectedResponse.getContent())) {
+        resource = resource.queryParam("response.content", URLEncoder.encode(expectedResponse.getContent(), "UTF-8")
+          .replace("+", "%20"));
       }
 
     } catch (UnsupportedEncodingException e) {
@@ -168,14 +122,16 @@ public abstract class JerseyClientTest extends JerseyTest {
       resource = resource.queryParam("response.mediaType", expectedResponse.getMediaType());
     }
 
-    resource.type("application/x-www-form-urlencoded").accept(MediaType.TEXT_PLAIN_TYPE).post(String.class);
+    resource.request()
+      .accept(MediaType.TEXT_PLAIN_TYPE).post(Entity.text(StringUtils.EMPTY));
   }
 
-  private WebResource fillRequestMappingPart(WebResource resource, RequestMapping requestMapping){
-    WebResource resourceWithRequestMapping = resource.queryParam("request.httpMethod", requestMapping.getHttpMethod().name());
+  private WebTarget fillRequestMappingPart(WebTarget resource, RequestMapping requestMapping) {
+    WebTarget resourceWithRequestMapping = resource.queryParam("request.httpMethod", requestMapping.getHttpMethod().name());
 
     if (requestMapping.getParams() != null && !requestMapping.getParams().isEmpty()) {
-      resourceWithRequestMapping = addMultivaluedMapsToRequest(requestMapping.getParams(), "request.queryParams", resourceWithRequestMapping);
+      resourceWithRequestMapping = addMultivaluedMapsToRequest(requestMapping.getParams(),
+        "request.queryParams", resourceWithRequestMapping);
     }
 
     try {
@@ -187,7 +143,7 @@ public abstract class JerseyClientTest extends JerseyTest {
     return resourceWithRequestMapping;
   }
 
-  private WebResource addMultivaluedMapsToRequest(MultivaluedMap<String, String> mapWithValues, String multivaluedName, WebResource resource) {
+  private WebTarget addMultivaluedMapsToRequest(MultivaluedMap<String, String> mapWithValues, String multivaluedName, WebTarget resource) {
     for (Map.Entry<String, List<String>> multivaluedEntities : mapWithValues.entrySet()) {
       for (String multivaluedEntity : multivaluedEntities.getValue()) {
         resource = resource.queryParam(multivaluedName, multivaluedEntities.getKey() + "," + multivaluedEntity);
